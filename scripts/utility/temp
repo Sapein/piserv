@@ -1,0 +1,15 @@
+#!/bin/sh
+
+temp=$(/opt/vc/bin/vcgencmd measure_temp | sed -e 's?temp=\(.*\)C?\1?' | sed -e 's?'"'"'??')
+temp_high=$(echo "${temp}" | sed -e 's?\(\)\.[0-9]*??')
+
+if [ "${temp_high}" -gt 70 ] && [ "${temp_high}" -lt 79 ]
+then
+    ssh sapeint@192.168.1.250 'DISPLAY=:0 notify-send --urgency=critical "Pi Temperature" "Your Rasperry Pi Server: '$(hostname)' is getting too hot!\nCurrent Temprature: '${temp}'"'
+fi
+
+if [ "${temp_high}" -ge 79 ]
+then
+    ssh sapeint@192.168.1.250 'DISPLAY=:0 notify-send --urgency=critical "Pi Shutdown" "Your Rasperry Pi Server: '$(hostname)' is getting too hot!\nShutdown imminent"'
+    shutdown -hP now
+fi

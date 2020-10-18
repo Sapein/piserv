@@ -1,0 +1,60 @@
+#!/bin/sh
+
+if [ -z  "${NAME}" ] && [ -z "${1}" ]
+then
+    printf "Var NAME not defined!\n" 1>&2
+    exit 1
+elif [ -n "${1}" ] && [ -z "${NAME}" ]
+then
+    NAME="${1}"
+fi
+
+if [ -z "${TARGET_DIR}" ] && [ -z "${2}" ]
+then
+    TARGET_DIR="verified"
+elif [ -n "${2}" ] && [ -z "${TARGET_DIR}" ]
+then
+    TARGET_DIR="${2}"
+fi
+
+if [ -z "${REJECT_DIR}" ] && [ -z "${3}" ]
+then
+    REJECT_DIR="rejected"
+elif [ -n "${3}" ] && [ -z "${REJECT_DIR}" ]
+then
+    REJECT_DIR="${3}"
+fi
+
+checkres() {
+    err="${1}"
+    if [ "${err}" -ne 0 ]
+    then
+        exit "${err}"
+    fi
+}
+
+sizes=$(isosize -x /dev/sr0 2>&1)
+e="${?}"
+checkres "${e}"
+sector_count=$(echo ${sizes} | sed -e 's/.* \(.*\),.*/\1/')
+sector_size=$(echo ${sizes} | sed -e 's/.*,.*: \(.*\)/\1/')
+printf "sector count: %s, sector size: %s\n" "${sector_count}" "${sector_size}"
+
+biF="1024"
+bF="1000"
+GiB=$(dc -e "3 k ${sector_size} ${sector_count} * ${biF} / ${biF} / ${biF} / p")
+GB=$(dc -e "3 k ${sector_size} ${sector_count} * ${bF} / ${bF} / ${bF} / p")
+printf "Final ISO Size: ${GB} GB, ${GiB} GiB\n"
+dd if=/dev/sr0 of="${NAME}.iso" bs="${sector_size}" count="${sector_count}" status=progress
+
+burnt_md5=$(md5sum "${NAME}.iso")
+disk_md5=$(dd if=/dev/sr0 bs="${sector_size}" count="${sector_count}" | md5sum)
+if [ "${burnt_md5}" = "${disk_md5}" ]
+then
+    mv "${NAME}.iso" "${TARGET_DIR}"
+    ssh sapeint@192.168.1.250 'DISPLAY=:0 notify-send --urgency=critical "Disc Rip Done!" "Your Disc Rip has completed!"'
+else
+    mv "${NAME}.iso" "${REJECT_DIR}"
+    ssh sapeint@192.168.1.250 'DISPLAY=:0 notify-send --urgency=critical "Disc Rip Failure!" "Your Disc Rip has failed!\nDisc Name: '"$(volname)"
+fi
+eject

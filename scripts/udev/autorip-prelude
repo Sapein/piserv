@@ -1,0 +1,46 @@
+#!/bin/sh
+
+if [ -z "${ACTION}" ] && [ -z "${KERNEL}" ]
+then
+    printf "This script does not support manual running!\n" 1>&2
+    exit 1
+fi
+
+if [ "${ACTION}" = "change" ] && [ "${KERNEL}" = "sr0" ]
+then
+    if [ -f /home/pi/.lock ]
+    then
+        exit 0
+    fi
+    cdrom=$(volname)
+    if [ -z "${cdrom}" ]
+    then
+        ripdisk "${cdrom}"
+        cdrom="${cdrom}.iso"
+    else
+        if [ -f "unknown-iso.iso" ]
+        then
+            i=1
+            while [ "${i}" -lt 9999 ]
+            do
+                if [ ! -f "unknown-iso-${i}.iso" ]
+                then
+                    break
+                fi
+                i=$(($i+1))
+            done
+            ripdisk "unknown-iso-${i}"
+            md5=$(md5sum "unknown-iso-${i}.iso")
+            cdrom="unknown-iso-${i}.iso"
+            unset i
+        else
+            ripdisk "unknown-iso"
+            cdrom="unknown-iso.iso"
+            md5=$(md5sum "unknown-iso.iso")
+        fi
+    fi
+    touch /home/pi/.lock
+    eject
+    rm /home/pi/.lock
+    verify-backend md5="${md5}" "${cdrom}"
+fi

@@ -1,0 +1,255 @@
+#!/bin/sh
+
+website="redump.org/discs/"
+website2="redump.org"
+narrowing=""
+game_region="region/U/"
+game_system="system/ps2/"
+quicksearch="quicksearch/"
+
+md5_cachefile=""
+sha1_cachefile=""
+
+
+# Constants and Special Variables
+CMD_DNE=127
+_SENTINAL="__SENTINAL__"
+RETURN="${_SENTINAL}"
+
+_get_url() {
+    RETURN="${_SENTINAL}"
+    url="${0}"
+
+    RETURN=$(curl "${url}")
+    if [ "${?}" -ne "${CMD_DNE}" ]
+    then
+        wget -O redump "${url}"
+        RETURN=$(cat redump)
+        rm redump
+    fi
+}
+
+# Search Redump.org to try and find the right game.
+search_redump() {
+    RETURN="${_SENTINAL}"
+    raw_game_name="${1}"
+
+    redump_game_name=$(echo "${raw_game_name}" | sed -e 's/ /-/g')
+    narrowing="${system}${region}"
+    redump_url="${website}${narrowing}${quicksearch}${redump_game_name}"
+    _get_url "${redump_url}"
+
+    RETURN="${RETURN}"
+    unset raw_game_name
+    unset redump_game_name
+    unset narrowing
+    unset redump_url
+}
+
+# Search Redump.org by a specific hash
+search_redump_md5() {
+    RETURN="${_SENTINAL}"
+    game_md5="${1}"
+
+    redump_url="${website}${quicksearch}${game_md5}"
+    _get_url "${redump_url}"
+    RETURN="${RETURN}"
+    unset game_md5
+    unset redump_url
+}
+
+redump_get_name() {
+    RETURN="${_SENTINAL}"
+    raw_html="{0}"
+    cat "${raw_html}" > redump
+    cat <<EOF > redump.py
+with open('redump', 'r') as f:
+ a = f.read()
+print(a.split("<h1>")[1].split("</h1>")[0])
+EOF
+    RETURN=$(python temp.py)
+    if [ "${?}" -ne 0 ]
+    then
+        RETURN="${_SENTINAL}"
+        return 1
+    fi
+    rm redump.py
+    rm redump
+    unset raw_html
+    return 0
+}
+
+parse_search_py() {
+    RETURN="${_SENTINAL}"
+    raw_html="${0}"
+    cat "${raw_html}" > redump
+    cat <<EOF > redump.py
+with open('redump', 'r') as f:
+ a = f.read()
+print(a.split("${NAME}")[0].split("<a href=>")[-1].strip('"'))
+EOF
+    RETURN=$(python temp.py)
+    rm redump.py
+    rm redump
+    unset raw_html
+}
+
+get_md5() {
+    RETURN="${_SENTINAL}"
+    _get_url "${website2}md5/"
+    RETURN="${RETURN}"
+}
+
+get_md5() {
+    RETURN="${_SENTINAL}"
+    _get_url "${website2}sha1/"
+    RETURN="${RETURN}"
+}
+
+update_cache_md5() {
+    RETURN="${_SENTINAL}"
+    md5="${0}"
+    game_name="${1}"
+    if [ ! -f "${md5_cachefile}" ]
+    then
+        echo "${md5}" > "${md5_cachefile}"
+    else
+        grep "${game_name}" "${md5_cachefile}" > /dev/null
+        if [ "${?}" -ne 0 ] #Not found
+        then
+            echo "${md5}" >> "${md5_cachefile}"
+        else
+            line=$(grep "${game_name}" "${md5_cachename}")
+            sed "${md5_cachefile}" -e 's?'"${line}"'?'"${md5}"'?'
+        fi
+    fi
+    unset md5
+    unset gamename
+}
+
+update_cache_sha1() {
+    RETURN="${_SENTINAL}"
+    sha1="${0}"
+    game_name="${1}"
+    if [ ! -f "${sha1_cachefile}" ]
+    then
+        echo "${sha1}" > "${sha1_cachefile}"
+    else
+        grep "${game_name}" "${sha1_cachefile}" > /dev/null
+        if [ "${?}" -ne 0 ] #Not found
+        then
+            echo "${sha1}" >> "${sha1_cachefile}"
+        else
+            line=$(grep "${game_name}" "${sha1_cachename}")
+            sed "${sha1_cachefile}" -e 's?'"${line}"'?'"${sha1}"'?'
+        fi
+    fi
+    unset sha1
+    unset gamename
+}
+
+read_cache_md5() {
+    RETURN="${_SENTINAL}"
+    game_name="${0}"
+    if [ ! -f "${md5_cachefile}" ]
+    then
+        exit 1
+    else
+        RETURN=$(grep "${game_name}" "${sha1_cachename}")
+    fi
+    unset game_name
+}
+
+read_cache_sha1() {
+    RETURN="${_SENTINAL}"
+    game_name="${0}"
+    if [ ! -f "${sha1_cachefile}" ]
+    then
+        exit 1
+    else
+        RETURN=$(grep "${game_name}" "${sha1_cachename}")
+    fi
+    unset game_name
+}
+
+compare_hashes() {
+    game_name="${0}"
+    game_iso="${1}"
+    sha1="${2}"
+    md5="${3}"
+
+    _sha1=$(sha1sum "${game_iso}")
+    _md5=$(md5sum "${game_iso}")
+    if [ "${sha1}" = "${_sha1}" ] && [ "${md5}" = "${_md5}" ]
+    then
+        exit 0
+    else
+        exit 1
+    fi
+    unset game_name
+    unset game_iso
+}
+
+if [ -z "${1}" ] &&  [ -z "${2}" ]
+then
+    printf "Usage: verify (game name | md5=md5sum) game-iso)\n" 1>&2
+fi
+
+if $(echo "${1}" | grep "md5=")
+then
+    g_game_md5=$(echo "${1}" | sed -e 's?md5=\(.*\)?\1?')
+    if [ -n "${2}" ]
+    then
+        g_game_iso="${2}"
+    fi
+else
+    g_game_name="${1}"
+    g_game_iso="${2}"
+fi
+
+if [ -z "${g_game_md5}" ]
+then
+    if [ -f "${sha1_cachefile}" ] && [ -f "${md5_cachefile}" ]
+    then
+        read_cache_sha1 "${game_name}"
+        sha1="${RETURN}"
+        read_cache_md5 "${game_name}"
+        md5="${RETURN}"
+        compare_hashes "${g_game_name}" "${g_game_iso}" "${sha1}" "${md5}"
+        unset md5
+        unset sha1
+    else
+        search_redump "${g_game_name}"
+        parse_search_py "${RETURN}"
+        disk="${RETURN}"
+        get_md5 ${disk}
+        md5="${RETURN}"
+        get_sha1 ${disk}
+        sha1="${RETURN}"
+        compare_hashes "${g_game_name}" "${g_game_iso}" "${sha1}" "${md5}"
+        unset sha1
+        unset md5
+        unset disk
+    fi
+    unset g_game_name
+    unset g_game_iso
+else
+    search_redump_md5 "${g_game_md5}"
+    game="${RETURN}"
+    redump_get_name "${game}"
+    if [ "${?}" -ne 0 ]
+    then
+        ssh sapeint@192.168.1.250 'DISPLAY=:0 notify-send --urgency=critical "Game Awaiting Approval!" "The Game Rip has not been found on Redump!\nPlease manually add name and rerum or approve"'
+        exit 1
+    fi
+    game_name="${RETURN}"
+    get_sha1 ${disk}
+    sha1="${RETURN}"
+    mv "${g_game_iso}" "/home/ps2/roms/verified/${game_name}.iso"
+    g_game_iso="/home/ps2/roms/verified/${game_name}.iso"
+    compare_hashes "${game_name}" "${g_game_iso}" "${sha1}" "${g_game_md5}"
+    unset sha1
+    unset md5
+    unset disk
+    unset g_game_md5
+fi
