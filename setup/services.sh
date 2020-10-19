@@ -1,6 +1,6 @@
 #!/bin/sh
 
-apt-get install vsftp openssh-server python3 eject samba ufw lvm2 busybox-syslogd ntp ntpdate
+apt-get install openssh-server python3 eject samba ufw lvm2 busybox-syslogd ntp ntpdate
 apt-get remove --purge rsyslogd
 systemctl enable ssh.service
 

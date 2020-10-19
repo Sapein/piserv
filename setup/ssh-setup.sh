@@ -1,3 +1,3 @@
 #!/bin/sh
 
-"IPQoS cs0 cs0" >> /etc/ssh/sshd_config
+echo "IPQoS cs0 cs0" >> /etc/ssh/sshd_config
