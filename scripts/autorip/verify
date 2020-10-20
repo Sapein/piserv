@@ -239,6 +239,7 @@ else
     redump_get_name "${game}"
     if [ "${?}" -ne 0 ]
     then
+        logger "Game Rip requires approval!"
         ssh sapeint@192.168.1.250 'DISPLAY=:0 notify-send --urgency=critical "Game Awaiting Approval!" "The Game Rip has not been found on Redump!\nPlease manually add name and rerum or approve"'
         exit 1
     fi
