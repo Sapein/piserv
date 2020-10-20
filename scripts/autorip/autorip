@@ -11,7 +11,7 @@ fi
 
 if [ -z "${TARGET_DIR}" ] && [ -z "${2}" ]
 then
-    TARGET_DIR="verified"
+    TARGET_DIR="/home/ps2/verified/DVD"
 elif [ -n "${2}" ] && [ -z "${TARGET_DIR}" ]
 then
     TARGET_DIR="${2}"
@@ -19,7 +19,7 @@ fi
 
 if [ -z "${REJECT_DIR}" ] && [ -z "${3}" ]
 then
-    REJECT_DIR="rejected"
+    REJECT_DIR="/home/ps2/rejected"
 elif [ -n "${3}" ] && [ -z "${REJECT_DIR}" ]
 then
     REJECT_DIR="${3}"
