@@ -1,17 +1,26 @@
 #!/bin/sh
-if [ -z "${ACTION}" ] || [ -z "${KERNEL}" ]
+if [ -z "${ACTION}" ] || [ -z "${1}" ]
 then
     printf "This script does not support manual running!\n" 1>&2
-    exit 1
+    exit 60
 fi
 
-if [ "${ACTION}" = "change" ] && [ "${KERNEL}" = "sr0" ]
+if [ "${ACTION}" = "change" ] && [ -n "${1}" ]
 then
     if [ "${1}" != "child" ]
     then
-        $(ACTION=${ACTION} KERNEL="${KERNEL}" setsid --fork ${0} child)
+        whereis at > /dev/null
+        if [ "${?}" -ne 0 ]
+        then
+            logger "You should probably install at...this is a hack"
+            $(ACTION=${ACTION} KERNEL="${KERNEL}" setsid --fork ${0} child)
+        else
+            logger "Pushing to at to bypass udev systemic killing."
+            printf '/usr/local/bin/.autorip-prelude child' | at now
+        fi
         exit 0
     fi
+    logger "Successfully Started!"
     if [ ! -f /home/pi/.lock ]
     then
         echo "${$}" > /home/pi/.lock
@@ -19,13 +28,18 @@ then
     else
         logger "Killing prior instance of autorip-prelude"
         kill $(cat /home/pi/.lock) # The drive has been pulled so we should probably terminate it..
+        rm /home/pi/.lock
         exit 0
     fi
     cdrom=$(volname)
     if [ -z "${cdrom}" ]
     then
-        autorip "${cdrom}"
-        cdrom="${cdrom}.iso"
+        if autorip "${cdrom}"
+        then
+            cdrom="/home/ps2/roms/verified/DVD/${cdrom}.iso"
+        else
+            cdrom="/home/ps2/roms/rejected/${cdrom}.iso"
+        fi
     else
         if [ -f "unknown-iso.iso" ]
         then
@@ -38,17 +52,38 @@ then
                 fi
                 i=$(($i+1))
             done
-            autorip "unknown-iso-${i}"
-            md5=$(md5sum "unknown-iso-${i}.iso")
-            cdrom="unknown-iso-${i}.iso"
+            if autorip "unknown-iso-${i}"
+            then
+                cdrom="/home/ps2/roms/verified/DVD/unknown-iso-${i}.iso"
+            else
+                cdrom="/home/ps2/roms/rejected/unknown-iso-${i}.iso"
+            fi
             unset i
         else
-            autorip "unknown-iso"
+            if autorip "unknown-iso"
+            then
+                cdrom="/home/ps2/roms/verified/DVD/unknown-iso.iso"
+            else
+                cdrom="/home/ps2/roms/rejected/unknown-iso.iso"
+            fi
             cdrom="unknown-iso.iso"
-            md5=$(md5sum "unknown-iso.iso")
         fi
     fi
-    eject
-    verify-backend md5="${md5}" "${cdrom}"
     rm /home/pi/.lock
+    logger "Ejecting"
+    eject
+    ssh sapeint@192.168.1.250 "DISPLAY=:0 notify-send --urgency=low 'Change your Disk' 'Your disk is about to be verified, you may insert a new disk!'"
+    md5=$(md5sum "${cdrom}")
+    strip() {
+        md5="${1}"
+    }
+    strip ${md5}
+    logger "Verifying The ISO"
+    if verify-backend md5="${md5}" "${cdrom}"
+    then
+        ssh sapeint@192.168.1.250 "DISPLAY=:0 notify-send --urgency=low 'Verification Completed!'"
+    else
+        num=$(shuf -i 0-9999 -n 1)
+        mv "${cdrom}" "/home/ps2/rejected/rejected-iso-${num}.iso"
+    fi
 fi
