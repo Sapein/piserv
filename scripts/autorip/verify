@@ -1,7 +1,7 @@
 #!/bin/sh
 
-website="redump.org/discs/"
-website2="redump.org"
+website="http://redump.org/discs/"
+website2="http://redump.org"
 narrowing=""
 game_region="region/U/"
 game_system="system/ps2/"
@@ -18,10 +18,10 @@ RETURN="${_SENTINAL}"
 
 _get_url() {
     RETURN="${_SENTINAL}"
-    url="${0}"
+    url="${1}"
 
-    RETURN=$(curl "${url}")
-    if [ "${?}" -ne "${CMD_DNE}" ]
+    RETURN=$(curl -L "${url}")
+    if [ "${?}" -eq "${CMD_DNE}" ] || [ -z "${RETURN}" ] && which wget > /dev/null
     then
         wget -O redump "${url}"
         RETURN=$(cat redump)
@@ -60,16 +60,19 @@ search_redump_md5() {
 
 redump_get_name() {
     RETURN="${_SENTINAL}"
-    raw_html="{0}"
+    raw_html="${1}"
     cat "${raw_html}" > redump
     cat <<EOF > redump.py
 with open('redump', 'r') as f:
  a = f.read()
 print(a.split("<h1>")[1].split("</h1>")[0])
 EOF
-    RETURN=$(python temp.py)
+    RETURN=$(python redump.py)
     if [ "${?}" -ne 0 ]
     then
+        rm redump.py
+        rm redump
+        unset raw_html
         RETURN="${_SENTINAL}"
         return 1
     fi
@@ -79,9 +82,24 @@ EOF
     return 0
 }
 
+redump_get_disk() {
+    RETURN="${_SENTINAL}"
+    raw_html="${1}"
+    echo "${raw_html}" > redump
+    cat <<EOF > redump.py
+with open('redump', 'r') as f:
+    a = f.read()
+print(a.split('">SHA1')[0].split('<a href="')[-1].split('/sha1')[0])
+EOF
+    RETURN=$(python redump.py)
+    rm redump.py
+    rm redump
+    unset raw_html
+}
+
 parse_search_py() {
     RETURN="${_SENTINAL}"
-    raw_html="${0}"
+    raw_html="${1}"
     cat "${raw_html}" > redump
     cat <<EOF > redump.py
 with open('redump', 'r') as f:
@@ -96,20 +114,24 @@ EOF
 
 get_md5() {
     RETURN="${_SENTINAL}"
-    _get_url "${website2}md5/"
+    disk="${1}"
+    _get_url "${website2}${disk}/md5/"
     RETURN="${RETURN}"
+    unset disk
 }
 
-get_md5() {
+get_sha1() {
     RETURN="${_SENTINAL}"
-    _get_url "${website2}sha1/"
+    disk="${1}"
+    _get_url "${website2}${disk}/sha1/"
     RETURN="${RETURN}"
+    unset disk
 }
 
 update_cache_md5() {
     RETURN="${_SENTINAL}"
-    md5="${0}"
-    game_name="${1}"
+    md5="${1}"
+    game_name="${2}"
     if [ ! -f "${md5_cachefile}" ]
     then
         echo "${md5}" > "${md5_cachefile}"
@@ -129,8 +151,8 @@ update_cache_md5() {
 
 update_cache_sha1() {
     RETURN="${_SENTINAL}"
-    sha1="${0}"
-    game_name="${1}"
+    sha1="${1}"
+    game_name="${2}"
     if [ ! -f "${sha1_cachefile}" ]
     then
         echo "${sha1}" > "${sha1_cachefile}"
@@ -150,7 +172,7 @@ update_cache_sha1() {
 
 read_cache_md5() {
     RETURN="${_SENTINAL}"
-    game_name="${0}"
+    game_name="${1}"
     if [ ! -f "${md5_cachefile}" ]
     then
         exit 1
@@ -162,7 +184,7 @@ read_cache_md5() {
 
 read_cache_sha1() {
     RETURN="${_SENTINAL}"
-    game_name="${0}"
+    game_name="${1}"
     if [ ! -f "${sha1_cachefile}" ]
     then
         exit 1
@@ -173,18 +195,24 @@ read_cache_sha1() {
 }
 
 compare_hashes() {
-    game_name="${0}"
-    game_iso="${1}"
-    sha1="${2}"
-    md5="${3}"
+    game_name="${1}"
+    game_iso="${2}"
+    sha1="${3}"
+    md5="${4}"
+    exit="${5:-0}"
 
     _sha1=$(sha1sum "${game_iso}")
     _md5=$(md5sum "${game_iso}")
-    if [ "${sha1}" = "${_sha1}" ] && [ "${md5}" = "${_md5}" ]
+    _compare_actual() {
+        [ "${1}" = "${3}" ]
+        return "${?}"
+    }
+    # IFS=" "
+    if compare ${_sha1} ${sha1} && compare ${_md5} ${md5}
     then
-        exit 0
+        return 0
     else
-        exit 1
+        return 1
     fi
     unset game_name
     unset game_iso
@@ -195,7 +223,7 @@ then
     printf "Usage: verify (game name | md5=md5sum) game-iso)\n" 1>&2
 fi
 
-if $(echo "${1}" | grep "md5=")
+if echo "${1}" | grep "md5="
 then
     g_game_md5=$(echo "${1}" | sed -e 's?md5=\(.*\)?\1?')
     if [ -n "${2}" ]
@@ -216,6 +244,7 @@ then
         read_cache_md5 "${game_name}"
         md5="${RETURN}"
         compare_hashes "${g_game_name}" "${g_game_iso}" "${sha1}" "${md5}"
+        endval="${?}"
         unset md5
         unset sha1
     else
@@ -227,6 +256,7 @@ then
         get_sha1 ${disk}
         sha1="${RETURN}"
         compare_hashes "${g_game_name}" "${g_game_iso}" "${sha1}" "${md5}"
+        endval="${?}"
         unset sha1
         unset md5
         unset disk
@@ -240,17 +270,27 @@ else
     if [ "${?}" -ne 0 ]
     then
         logger "Game Rip requires approval!"
-        ssh sapeint@192.168.1.250 'DISPLAY=:0 notify-send --urgency=critical "Game Awaiting Approval!" "The Game Rip has not been found on Redump!\nPlease manually add name and rerum or approve"'
+        ssh sapeint@192.168.1.250 'DISPLAY=:0 notify-send --urgency=critical "Game Awaiting Approval!" "The Game Rip has not been found on Redump!\nPlease manually add name and rerun or approve"'
         exit 1
     fi
     game_name="${RETURN}"
+    redump_get_disk "${game}"
+    disk="${RETURN}"
     get_sha1 ${disk}
     sha1="${RETURN}"
-    mv "${g_game_iso}" "/home/ps2/roms/verified/${game_name}.iso"
-    g_game_iso="/home/ps2/roms/verified/${game_name}.iso"
-    compare_hashes "${game_name}" "${g_game_iso}" "${sha1}" "${g_game_md5}"
+    _dirname=$(dirname "${g_game_iso}")
+    if compare_hashes "${game_name}" "${g_game_iso}" "${sha1}" "${g_game_md5}"
+    then
+        mv "${g_game_iso}" "/home/ps2/roms/verified/${game_name}.iso"
+        g_game_iso="/home/ps2/roms/verified/${game_name}.iso"
+        endval=0
+    else
+        endval=1
+    fi
     unset sha1
     unset md5
     unset disk
     unset g_game_md5
 fi
+logger "Verification Done"
+return 1
