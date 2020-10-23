@@ -84,6 +84,6 @@ then
         ssh sapeint@192.168.1.250 "DISPLAY=:0 notify-send --urgency=low 'Verification Completed!'"
     else
         num=$(shuf -i 0-9999 -n 1)
-        mv "${cdrom}" "/home/ps2/rejected/rejected-iso-${num}.iso"
+        mv "${cdrom}" "/home/ps2/roms/rejected/rejected-iso-${num}.iso"
     fi
 fi
