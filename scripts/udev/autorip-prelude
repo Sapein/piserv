@@ -1,4 +1,8 @@
 #!/bin/sh
+unset IFS
+LOCK_LOCATION="/tmp/autorip-prelude.lock"
+
+
 if [ -z "${ACTION}" ] && [ -z "${1}" ]
 then
     printf "This script does not support manual running!\n" 1>&2
@@ -21,14 +25,14 @@ then
         exit 0
     fi
     logger "Successfully Started!"
-    if [ ! -f /home/pi/.lock ]
+    if [ ! -f "${LOCK_LOCATION}" ]
     then
-        echo "${$}" > /home/pi/.lock
+        echo "${$}" > "${LOCK_LOCATION}"
         logger "autorip-prelude running with PID ${$}"
     else
         logger "Killing prior instance of autorip-prelude"
-        kill $(cat /home/pi/.lock) # The drive has been pulled so we should probably terminate it..
-        rm /home/pi/.lock
+        kill $(cat "${LOCK_LOCATION}") # The drive has been pulled so we should probably terminate it..
+        rm "${LOCK_LOCATION}"
         exit 0
     fi
     cdrom=$(volname)
@@ -69,7 +73,7 @@ then
             cdrom="unknown-iso.iso"
         fi
     fi
-    rm /home/pi/.lock
+    rm "${LOCK_LOCATION}"
     logger "Ejecting"
     eject
     ssh sapeint@192.168.1.250 "DISPLAY=:0 notify-send --urgency=low 'Change your Disk' 'Your disk is about to be verified, you may insert a new disk!'"
