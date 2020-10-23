@@ -1,5 +1,5 @@
 #!/bin/sh
-if [ -z "${ACTION}" ] || [ -z "${1}" ]
+if [ -z "${ACTION}" ] && [ -z "${1}" ]
 then
     printf "This script does not support manual running!\n" 1>&2
     exit 60
