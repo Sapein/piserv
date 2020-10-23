@@ -10,7 +10,7 @@ ln -s /tmp/dhcpcd.resolv.conf /etc/resolv.conf
 rm /var/lib/systemd/random-seed
 ln -s /tmp/random-seed /var/lib/systemd/random-seed
 
-sed -i "/lib/systemd/system/systemd-random-seed.service" -e 's?ExecStart=/lib/systemd/systemd-random-seed load?ExecStart=/lib/systemd/systemd-random-seed load\nExecStart=/lib/systemd/systemd-random-seed load'
+sed -i "/lib/systemd/system/systemd-random-seed.service" -e 's?ExecStart=/lib/systemd/systemd-random-seed load?ExecStart=/lib/systemd/systemd-random-seed load\nExecStart=/lib/systemd/systemd-random-seed load?'
 
 mount -o remount,rw /boot
 cmdline=$(cat /boot/cmdline.txt)
@@ -20,4 +20,4 @@ mount -o remount,ro /boot
 # This changes how ntp works.
 cp /lib/systemd/system/ntp.service /etc/systemd/system/ntp.service
 sed -i cp /lib/systemd/system/ntp.service /etc/systemd/system/ntp.service
-sed -i -e 'sed?^PrivateTmp=?#PrivateTmp=?' /etc/systemd/system/ntp.service
+sed -i -e 's?^PrivateTmp=?#PrivateTmp=?' /etc/systemd/system/ntp.service
