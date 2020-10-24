@@ -281,8 +281,8 @@ else
     _dirname=$(dirname "${g_game_iso}")
     if compare_hashes "${game_name}" "${g_game_iso}" "${sha1}" "${g_game_md5}"
     then
-        mv "${g_game_iso}" "/home/ps2/roms/verified/${game_name}.iso"
-        g_game_iso="/home/ps2/roms/verified/${game_name}.iso"
+        mv "${g_game_iso}" "${_dirname}/${game_name}.iso"
+        g_game_iso="${_dirname}/${game_name}.iso"
         endval=0
     else
         endval=1
