@@ -208,7 +208,7 @@ compare_hashes() {
         return "${?}"
     }
     # IFS=" "
-    if compare ${_sha1} ${sha1} && compare ${_md5} ${md5}
+    if _compare_actual ${_sha1} ${sha1} && _compare_actual ${_md5} ${md5}
     then
         return 0
     else
