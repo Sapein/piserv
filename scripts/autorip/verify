@@ -23,9 +23,9 @@ _get_url() {
     RETURN=$(curl -L "${url}")
     if [ "${?}" -eq "${CMD_DNE}" ] || [ -z "${RETURN}" ] && which wget > /dev/null
     then
-        wget -O redump "${url}"
-        RETURN=$(cat redump)
-        rm redump
+        wget -O /tmp/redump "${url}"
+        RETURN=$(cat /tmp/redump)
+        rm /tmp/redump
     fi
 }
 
@@ -61,23 +61,23 @@ search_redump_md5() {
 redump_get_name() {
     RETURN="${_SENTINAL}"
     raw_html="${1}"
-    cat "${raw_html}" > redump
-    cat <<EOF > redump.py
-with open('redump', 'r') as f:
+    echo "${raw_html}" > /tmp/redump
+    cat <<EOF > /tmp/redump.py
+with open('/tmp/redump', 'r') as f:
  a = f.read()
 print(a.split("<h1>")[1].split("</h1>")[0])
 EOF
-    RETURN=$(python redump.py)
+    RETURN=$(python /tmp/redump.py)
     if [ "${?}" -ne 0 ]
     then
-        rm redump.py
-        rm redump
+        rm /tmp/redump.py
+        rm /tmp/redump
         unset raw_html
         RETURN="${_SENTINAL}"
         return 1
     fi
-    rm redump.py
-    rm redump
+    rm /tmp/redump.py
+    rm /tmp/redump
     unset raw_html
     return 0
 }
@@ -85,30 +85,30 @@ EOF
 redump_get_disk() {
     RETURN="${_SENTINAL}"
     raw_html="${1}"
-    echo "${raw_html}" > redump
-    cat <<EOF > redump.py
-with open('redump', 'r') as f:
+    echo "${raw_html}" > /tmp/redump
+    cat <<EOF > /tmp/redump.py
+with open('/tmp/redump', 'r') as f:
     a = f.read()
 print(a.split('">SHA1')[0].split('<a href="')[-1].split('/sha1')[0])
 EOF
-    RETURN=$(python redump.py)
-    rm redump.py
-    rm redump
+    RETURN=$(python /tmp/redump.py)
+    rm /tmp/redump.py
+    rm /tmp/redump
     unset raw_html
 }
 
 parse_search_py() {
     RETURN="${_SENTINAL}"
     raw_html="${1}"
-    cat "${raw_html}" > redump
-    cat <<EOF > redump.py
-with open('redump', 'r') as f:
+    echo "${raw_html}" > /tmp/redump
+    cat <<EOF > /tmp/redump.py
+with open('/tmp/redump', 'r') as f:
  a = f.read()
 print(a.split("${NAME}")[0].split("<a href=>")[-1].strip('"'))
 EOF
-    RETURN=$(python temp.py)
-    rm redump.py
-    rm redump
+    RETURN=$(python /tmp/temp.py)
+    rm /tmp/redump.py
+    rm /tmp/redump
     unset raw_html
 }
 
