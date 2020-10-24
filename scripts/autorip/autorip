@@ -70,6 +70,6 @@ then
     exit 0
 else
     mv "/home/ps2/${NAME}.iso" "${REJECT_DIR}/${NAME}.iso"
-    ssh sapeint@192.168.1.250 'DISPLAY=:0 notify-send --urgency=critical "Disc Rip Failure!" "Your Disc Rip has failed!\nDisc Name: '"$(volname)"
+    ssh sapeint@192.168.1.250 'DISPLAY=:0 notify-send --urgency=critical "Disc Rip Failure!" "Your Disc Rip has failed!\nDisc Name: '"${NAME}"'"'
     exit 1
 fi
