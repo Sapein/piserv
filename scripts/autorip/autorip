@@ -63,7 +63,7 @@ compare_hashes() {
 }
 
 IFS=' '
-if compare "${burnt_md5}" "${disk_md5}"
+if compare_hashes "${burnt_md5}" "${disk_md5}"
 then
     mv "/home/ps2/${NAME}.iso" "${TARGET_DIR}/${NAME}.iso"
     ssh sapeint@192.168.1.250 'DISPLAY=:0 notify-send --urgency=low "Disc Rip Done!" "Your Disc Rip has completed!"'
