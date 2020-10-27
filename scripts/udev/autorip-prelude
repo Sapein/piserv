@@ -83,7 +83,7 @@ then
     }
     strip ${md5}
     logger "Verifying The ISO"
-    if verify-backend md5="${md5}" "${cdrom}"
+    if verify md5="${md5}" "${cdrom}"
     then
         ssh sapeint@192.168.1.250 "DISPLAY=:0 notify-send --urgency=low 'Verification Completed!'"
     else
