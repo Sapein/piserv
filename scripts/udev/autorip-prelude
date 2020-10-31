@@ -1,6 +1,22 @@
 #!/bin/sh
 unset IFS
 LOCK_LOCATION="/tmp/autorip-prelude.lock"
+AUTORIP_PID="${$}"
+
+log() {
+    logger -id="${AUTORIP_PID:-${$}}" -t "Autorip" "${1}"
+}
+
+notify() {
+    urgency="${1}"
+    title="${2}"
+    if [ -z "${3}" ]
+    then
+        ssh sapeint@192.168.1.250 "DISPLAY=:0 notify-send --urgency=${urgency} '${title}'"
+    else
+        ssh sapeint@192.168.1.250 "DISPLAY=:0 notify-send --urgency=${urgency} '${title}' '${3}'"
+    fi
+}
 
 
 if [ -z "${ACTION}" ] && [ -z "${1}" ]
@@ -16,21 +32,21 @@ then
         whereis at > /dev/null
         if [ "${?}" -ne 0 ]
         then
-            logger "You should probably install at...this is a hack"
+            log "You should probably install at...this is a hack"
             $(ACTION=${ACTION} KERNEL="${KERNEL}" setsid --fork ${0} child)
         else
-            logger "Pushing to at to bypass udev systemic killing."
+            log "Pushing to at to bypass udev systemic killing."
             printf '/usr/local/bin/.autorip-prelude child' | at now
         fi
         exit 0
     fi
-    logger "Successfully Started!"
+    log "Successfully Started!"
     if [ ! -f "${LOCK_LOCATION}" ]
     then
         echo "${$}" > "${LOCK_LOCATION}"
-        logger "autorip-prelude running with PID ${$}"
+        log "autorip-prelude running with PID ${$}"
     else
-        logger "Killing prior instance of autorip-prelude"
+        log "Killing prior instance of autorip-prelude"
         kill $(cat "${LOCK_LOCATION}") # The drive has been pulled so we should probably terminate it..
         rm "${LOCK_LOCATION}"
         exit 0
@@ -38,7 +54,7 @@ then
     cdrom=$(volname)
     if [ -z "${cdrom}" ]
     then
-        if autorip "${cdrom}"
+        if AUTORIP_PID="${AUTORIP_PID}" autorip "${cdrom}"
         then
             cdrom="/home/ps2/roms/verified/DVD/${cdrom}.iso"
         else
@@ -56,36 +72,49 @@ then
                 fi
                 i=$(($i+1))
             done
-            if autorip "unknown-iso-${i}"
+            if AUTORIP_PID="${AUTORIP_PID}" autorip "unknown-iso-${i}"
             then
                 cdrom="/home/ps2/roms/verified/DVD/unknown-iso-${i}.iso"
             else
                 cdrom="/home/ps2/roms/rejected/unknown-iso-${i}.iso"
             fi
-            unset i
         else
-            if autorip "unknown-iso"
+            if AUTORIP_PID="${AUTORIP_PID}" autorip "unknown-iso"
             then
                 cdrom="/home/ps2/roms/verified/DVD/unknown-iso.iso"
             else
                 cdrom="/home/ps2/roms/rejected/unknown-iso.iso"
             fi
-            cdrom="unknown-iso.iso"
         fi
     fi
+    base=$(dirname "${cdrom}")
+    rid=$(shuf -i 1-999 -n 1)
+    if [ -z ${i} ]
+    then
+        mv "${cdrom}" "${base}/unknown-iso-${rid}.iso"
+        cdrom="${base}/unknown-iso-${rid}.iso"
+    else
+        mv "${cdrom}" "${base}/unknown-iso-${rid}-${i}.iso"
+        cdrom="${base}/unknown-iso-${rid}-${i}.iso"
+        unset i
+    fi
+    unset base
+    unset rid
     rm "${LOCK_LOCATION}"
-    logger "Ejecting"
+    log "Ejecting"
     eject
-    ssh sapeint@192.168.1.250 "DISPLAY=:0 notify-send --urgency=low 'Change your Disk' 'Your disk is about to be verified, you may insert a new disk!'"
+    notify 'low' 'Change your Disk' 'Your disk is about to be verified, you may insert a new disk!'
+    # ssh sapeint@192.168.1.250 "DISPLAY=:0 notify-send --urgency=low 'Change your Disk' 'Your disk is about to be verified, you may insert a new disk!'"
     md5=$(md5sum "${cdrom}")
     strip() {
         md5="${1}"
     }
     strip ${md5}
-    logger "Verifying The ISO"
-    if verify md5="${md5}" "${cdrom}"
+    log "Verifying The ISO"
+    if AUTORIP_PID="${AUTORIP_PID}" verify md5="${md5}" "${cdrom}"
     then
-        ssh sapeint@192.168.1.250 "DISPLAY=:0 notify-send --urgency=low 'Verification Completed!'"
+        # ssh sapeint@192.168.1.250 "DISPLAY=:0 notify-send --urgency=low 'Verification Completed!'"
+        notify 'low' 'Verification Complete'
     else
         num=$(shuf -i 0-9999 -n 1)
         mv "${cdrom}" "/home/ps2/roms/rejected/rejected-iso-${num}.iso"
