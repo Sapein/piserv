@@ -11,7 +11,7 @@ md5_cachefile=""
 sha1_cachefile=""
 
 log() {
-    logger -id="${AUTORIP_PID:-${$}}" -t "Verify" "${1}"
+    logger --id="${AUTORIP_PID:-${$}}" -t "Verify" "${1}"
 }
 
 notify() {

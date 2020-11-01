@@ -4,7 +4,7 @@ LOCK_LOCATION="/tmp/autorip-prelude.lock"
 AUTORIP_PID="${$}"
 
 log() {
-    logger -id="${AUTORIP_PID:-${$}}" -t "Autorip" "${1}"
+    logger --id="${AUTORIP_PID:-${$}}" -t "Autorip" "${1}"
 }
 
 notify() {
