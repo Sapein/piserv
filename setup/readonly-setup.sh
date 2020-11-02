@@ -1,5 +1,7 @@
 #!/bin/sh
 
+printf "It is recommended you do this yourself through raspi-config.\n"
+exit 0
 rm -rf /var/lib/dhcp /var/lib/dhcpcd5 /var/spool /etc/resolv.conf
 ln -s /tmp /var/lib/dhcp
 ln -s /tmp /var/lib/dhcpcd5

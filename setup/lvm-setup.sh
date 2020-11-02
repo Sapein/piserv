@@ -6,6 +6,9 @@ DRIVE4=/dev/sdd
 VGNAME=vg0
 LVNAME=storage
 
+printf "Skipping, you should probably set this up on your own.\n"
+exit 1
+
 parted "${DRIVE1}" rm 1
 parted "${DRIVE2}" rm 1
 parted "${DRIVE3}" rm 1
