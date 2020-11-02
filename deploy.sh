@@ -20,9 +20,11 @@ deploy_scripts() {
 deploy_config() {
     mv /etc/fstab /etc/fstab.old
     mv /etc/samba/smb.conf /etc/samba/smb.conf.old 
+    mv /etc/dhcpcd.conf /etc/dhcpcd.conf.old
     ln -s config/fstab/fstab /etc/fstab
     ln -s config/udev/rules.d/01-autorip.rules /etc/udev/rules.d/
     ln -s config/samba/smb.conf /etc/samba/smb.conf
+    ln -s config/dhcpcd/dhcpcd.conf /etc/dhcpcd.conf
 }
 
 setup
